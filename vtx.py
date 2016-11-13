@@ -6,8 +6,14 @@ import logging
 import time
 import os
 import pygame
+import argparse
+import socket
+import paho.mqtt.client as mqtt
 
 BASE_URL = 'http://192.168.2.112'
+UPD_IP = ''
+MQTT_HOST = '192.168.2.112'
+MQTT_TOPIC = 'erlt/monitor'
 MONITOR_URL = BASE_URL + '/api/v1/monitor/'
 HEADERS = {'User-Agent': 'vtx publisher'}
 
@@ -148,11 +154,63 @@ def format_lap_time(time):
     return "%ss" % round(time/1000., 4)
 
 
-def main():
+def mqtt_on_connect(client, userdata, flags, rc):
+    logger.debug("Connected with result code %s", rc)
+    client.subscribe(MQTT_TOPIC)
+
+
+def mqtt_on_message(client, userdata, msg):
+    data = json.loads(msg.payload)
+    draw_table(data)
+
+def draw_mqtt():
+    logger.debug("mqtt draw")
+
+    client = mqtt.Client()
+    client.on_connect = mqtt_on_connect
+    client.on_message = mqtt_on_message
+
+    client.connect(MQTT_HOST, 1883, 60)
+    init_framebuffer()
+    client.loop_forever()
+
+
+def draw_udp():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind((UPD_IP, 33333))
+
+    init_framebuffer()
+
+    while True:
+        rawdata, addr = s.recvfrom(65535)
+        logger.debug("address %s", addr)
+        data = json.loads(rawdata)
+        draw_table(data)
+
+
+def draw_polling():
     while True:
         data = get_monitor()
         draw_table(data)
         time.sleep(1)
 
+def main(args):
+    logger.debug(args)
+    if args.mqtt:
+        logger.info("use mqtt")
+        draw_mqtt()
+    elif args.udp:
+        logger.info("use udp")
+        draw_udp()
+    else:
+        logger.info("use polling")
+        draw_polling()
+
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='vtx publisher')
+    parser.add_argument('--mqtt', action='store_true')
+    parser.add_argument('--udp', action='store_true')
+    args = parser.parse_args()
+    main(args)
