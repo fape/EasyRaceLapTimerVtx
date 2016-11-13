@@ -111,7 +111,7 @@ def draw_table(data):
     # Blit the racename to left corner
     screen.blit(text, (((screen.get_width() - logo.get_width() - 5 )/2 - text.get_width()/2 + logo.get_width() + 5 ), 0))
 
-    num = min(len(data.get("data")), 11)
+    num = min(len(data.get("data")), 11)+1
     test = font2.render("M", True, (255, 255, 255))
 
     space = max(round((((screen.get_height()-text.get_height())-num * test.get_height())/num+2)), 0)
