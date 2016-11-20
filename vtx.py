@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import json
 import urllib2
 import logging
@@ -17,12 +18,14 @@ MQTT_TOPIC = 'erlt/monitor'
 MONITOR_URL = BASE_URL + '/api/v1/monitor/'
 HEADERS = {'User-Agent': 'vtx publisher'}
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 logger = logging.getLogger("vtx")
 
+
+args = None
 screen = None
 logo = None
-font =  None
+font = None
 font2 = None
 
 
@@ -45,6 +48,20 @@ def get_json(url):
 def get_monitor():
     logger.debug("get monitor")
     return get_json(MONITOR_URL)
+
+
+def init_window():
+    pygame.init()
+    logger.info("init window")
+    global screen
+    screen = pygame.display.set_mode((615, 512))
+    logger.info("window size: %d x %d", screen.get_width(), screen.get_height())
+    # Clear the screen to start
+    screen.fill((0, 0, 0))
+    # Initialise font support
+    pygame.font.init()
+    # Render the screen
+    pygame.display.flip()
 
 
 def init_framebuffer():
@@ -75,9 +92,9 @@ def init_framebuffer():
         raise Exception('No suitable video driver found!')
 
     size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
-    logger.info("Framebuffer size: %d x %d", size[0], size[1])
     global screen
     screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
+    logger.info("Framebuffer size: %d x %d", screen.get_width(), screen.get_height())
     # Clear the screen to start
     screen.fill((0, 0, 0))
     # Initialise font support
@@ -90,7 +107,10 @@ def init_framebuffer():
 
 def draw_table(data):
     if not screen:
-        init_framebuffer()
+        if args.window:
+            init_window()
+        else:
+            init_framebuffer()
     # Clear the screen to start
     screen.fill((0, 0, 0))
     # Render the Easy race lap timer to bottom center
@@ -101,6 +121,7 @@ def draw_table(data):
     global font
     if not font:
         font = pygame.font.SysFont("sans", 49)
+        logger.info("font: %s", pygame.font.get_default_font())  # freesansbold.ttf
     global font2
     if not font2:
         font2 = pygame.font.SysFont("sans", 37)
@@ -163,6 +184,7 @@ def mqtt_on_message(client, userdata, msg):
     data = json.loads(msg.payload)
     draw_table(data)
 
+
 def draw_mqtt():
     logger.debug("mqtt draw")
 
@@ -194,23 +216,46 @@ def draw_polling():
         draw_table(data)
         time.sleep(1)
 
-def main(args):
+
+def draw_file():
+    data = json.load(args.file)
+    draw_table(data)
+
+    if args.window:
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit();
+                    exit()
+    else:
+        time.sleep(10)
+
+
+def main():
     logger.debug(args)
+    if not args:
+        logger.error("no args")
     if args.mqtt:
         logger.info("use mqtt")
         draw_mqtt()
     elif args.udp:
         logger.info("use udp")
         draw_udp()
+    elif args.file:
+        logger.info("use file")
+        draw_file()
     else:
         logger.info("use polling")
         draw_polling()
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='vtx publisher')
-    parser.add_argument('--mqtt', action='store_true')
-    parser.add_argument('--udp', action='store_true')
+    parser.add_argument('-m', '--mqtt', action='store_true')
+    parser.add_argument('-u', '--udp', action='store_true')
+    parser.add_argument('-f', '--file', type=argparse.FileType('r'))
+    parser.add_argument('-w', '--window', action='store_true')
+
     args = parser.parse_args()
-    main(args)
+
+    main()
