@@ -9,8 +9,8 @@ Raspberry Pi
 sdtv_mode=2
 hdmi_ignore_hotplug=1
 overscan_scale=1
-overscan_left=25
-overscan_right=16
-overscan_top=0
-overscan_bottom=0
+overscan_left=8
+overscan_right=-10
+overscan_top=-13
+overscan_bottom=-15
 ```

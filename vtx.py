@@ -54,7 +54,7 @@ def init_window():
     pygame.init()
     logger.info("init window")
     global screen
-    screen = pygame.display.set_mode((615, 512))
+    screen = pygame.display.set_mode((658, 540))
     logger.info("window size: %d x %d", screen.get_width(), screen.get_height())
     # Clear the screen to start
     screen.fill((0, 0, 0))
@@ -125,6 +125,8 @@ def draw_table(data):
     global font2
     if not font2:
         font2 = pygame.font.SysFont("sans", 37)
+
+    # pygame.draw.rect(screen, (255, 0, 0), (0, 0, screen.get_width(), screen.get_height()), 1)
 
     # Get a font and use it render some text on a Surface.
     #font = pygame.font.Font(None, 70)
@@ -228,7 +230,7 @@ def draw_file():
                     pygame.quit();
                     exit()
     else:
-        time.sleep(10)
+        time.sleep(100)
 
 
 def main():
