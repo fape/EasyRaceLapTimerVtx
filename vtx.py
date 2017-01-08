@@ -124,7 +124,7 @@ def draw_table(data):
         logger.info("font: %s", pygame.font.get_default_font())  # freesansbold.ttf
     global font2
     if not font2:
-        font2 = pygame.font.SysFont("sans", 37)
+        font2 = pygame.font.SysFont("sans", 40)
 
     # pygame.draw.rect(screen, (255, 0, 0), (0, 0, screen.get_width(), screen.get_height()), 1)
 
@@ -141,40 +141,85 @@ def draw_table(data):
     screen.blit(text, (((screen.get_width() - logo.get_width() - 5 )/2 - text.get_width()/2 + logo.get_width() + 5 ), 0))
 
     num = min(len(data.get("data")), 11)+1
-    test = font2.render("M", True, (255, 255, 255))
 
-    space = max(round((((screen.get_height()-text.get_height())-num * test.get_height())/num+2)), 0)
+    h_space = max(round((((screen.get_height()-text.get_height())-num * font2.get_height())/num+2)), 0)
     #space = 0
-    logger.debug("space %s", space);
+    logger.debug("h_space %s", h_space)
 
     idx = 0
-    text_h = text.get_height() + space;
+    text_h = text.get_height() + h_space
+
+    table = {}
+    max_sizes = {}
 
     for item in data.get("data"):
-        rank = item.get("position")
-        pilot = item.get("pilot").get("name")
-        fastest_lap = format_lap_time(item.get("fastest_lap").get("lap_time"))
-        last_lap = format_lap_time(item.get("last_lap").get("lap_time"))
-        avg_lap = format_lap_time(item.get("avg_lap_time"))
-        lap_count = item.get("lap_count")
-
-        line = "%s %s %s %s %s %s" % (rank, pilot, last_lap, fastest_lap, avg_lap, lap_count)
-        text = font2.render(line, True, (249, 178, 51) if (idx % 2 == 0) else (255, 255, 255))
+        even = idx % 2 == 0
         idx += 1
-        logger.debug("line %s, text_h %s, height %s", line, text_h, text.get_height())
+        rank = item.get("position")
+        rank_txt = render_table_text(rank, even)
+        pilot = item.get("pilot").get("name")
+        pilot_txt = render_table_text(pilot, even)
+        fastest_lap = item.get("fastest_lap").get("lap_time")
+        fastest_lap_txt = render_table_text(format_lap_time(fastest_lap), even)
+        last_lap = item.get("last_lap").get("lap_time")
+        last_lap_txt = render_table_text(format_lap_time(last_lap), even)
+        avg_lap = item.get("avg_lap_time")
+        avg_lap_txt = render_table_text(format_lap_time(avg_lap), even)
+        # lap_count = item.get("lap_count")
+        # lap_count_txt = render_table_text(lap_count, even)
 
-        if text_h + text.get_height() <= screen.get_height():
-            screen.blit(text, (0, text_h))
-            text_h += text.get_height()+ space
-        else:
-            break
+        table[pilot] = {"position": idx, "rank": rank, "rank_txt": rank_txt, "pilot": pilot, "pilot_txt": pilot_txt,
+                        "fastest_lap": fastest_lap, "fastest_lap_txt": fastest_lap_txt, "last_lap": last_lap,
+                        "last_lap_txt": last_lap_txt, "avg_lap": avg_lap, "avg_lap_txt": avg_lap_txt,
+                        # "lap_count": lap_count, "lap_count_txt": lap_count_txt
+                        }
 
+        calc_max_width(max_sizes, "rank_txt", rank_txt)
+        calc_max_width(max_sizes, "pilot_txt", pilot_txt)
+        calc_max_width(max_sizes, "fastest_lap_txt", fastest_lap_txt)
+        calc_max_width(max_sizes, "last_lap_txt", last_lap_txt)
+        calc_max_width(max_sizes, "avg_lap_txt", avg_lap_txt)
+        # calc_max_width(max_sizes, "lap_count_txt", lap_count_txt)
+
+    test_txt = font2.render(" ", True, (255, 255, 255))
+    w_space = max(round((screen.get_width() - sum(max_sizes.itervalues()))/5), test_txt.get_width())
+    w_space_start = round(w_space/2)
+    logger.debug("w_space %s" % w_space)
+
+    for item in table.itervalues():
+        pos = item["position"]
+        rank_txt = item["rank_txt"]
+        pilot_txt = item["pilot_txt"]
+        last_lap_txt = item["last_lap_txt"]
+        fastest_lap_txt = item["fastest_lap_txt"]
+        avg_lap_txt = item["avg_lap_txt"]
+        draw_height = text_h + (pos-1)*(font2.get_height() + h_space)
+        if draw_height + font2.get_height() <= screen.get_height():
+            screen.blit(rank_txt, (max_sizes["rank_txt"] - rank_txt.get_width()+ w_space_start, draw_height))
+            screen.blit(pilot_txt, (max_sizes["rank_txt"] + w_space + w_space_start, draw_height))
+            screen.blit(last_lap_txt, (max_sizes["rank_txt"] + max_sizes["pilot_txt"] + w_space * 2 + w_space_start,
+                                       draw_height))
+            screen.blit(fastest_lap_txt, (max_sizes["rank_txt"] + max_sizes["pilot_txt"] + max_sizes["last_lap_txt"]
+                        + w_space * 3 + w_space_start, draw_height))
+            screen.blit(avg_lap_txt, (max_sizes["rank_txt"] + max_sizes["pilot_txt"] + max_sizes["last_lap_txt"]
+                        + max_sizes["fastest_lap_txt"] + w_space * 4 + w_space_start, draw_height))
+
+    del table
+    logger.debug(max_sizes)
     # Render the screen
     pygame.display.update()
 
 
-def format_lap_time(time):
-    return "%ss" % round(time/1000., 4)
+def calc_max_width(sizes, key, text):
+    sizes[key] = max(sizes.get(key, 0), text.get_width())
+
+
+def render_table_text(text, even):
+    return font2.render("%s" % text, True, (249, 178, 51) if even else (255, 255, 255))
+
+
+def format_lap_time(lap_time):
+    return "%ss" % round(lap_time/1000., 2)
 
 
 def mqtt_on_connect(client, userdata, flags, rc):
