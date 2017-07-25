@@ -14,7 +14,9 @@ use framebuffer to display [EasyRaceLapTimer](https://github.com/polyvision/Easy
   ![rpi connection](http://i.imgur.com/8RDw5qJ.png) [source](http://www.instructables.com/id/Raspberry-Pi-2-Quick-n-Easy-RCA/)
   
 * Raspberry Pi
-  * install packages `sudo apt-get install python python-pygame paho-mqtt python-argparse` (required internet connection)
+  * install packages (required internet connection)
+    * `sudo apt-get install python python-pygame python-argparse python-pip`
+    * `pip install paho-mqtt`
   * force pal mode in `/boot/config.txt` and reboot (adjust last 4 values to fill the whole screen)
       ```
       sdtv_mode=2
