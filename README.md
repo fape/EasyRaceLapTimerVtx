@@ -29,5 +29,5 @@ use framebuffer to display [EasyRaceLapTimer](https://github.com/polyvision/Easy
       ```
  * download/checkout repo
  * change `BASE_URL` in `vtx.py`
- * start with`python ./vtx.py` (use json api with polling)
-   * `python ./vtx.py -u` (use udp broadcast)
+ * start with`sudo python ./vtx.py` (use json api with polling)
+   * `sudo python ./vtx.py -u` (use udp broadcast)
