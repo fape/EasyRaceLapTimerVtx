@@ -11,15 +11,14 @@ import argparse
 import socket
 import paho.mqtt.client as mqtt
 
-BASE_URL = 'http://192.168.2.112'
+BASE_URL = 'http://localhost'
 UPD_IP = ''
 MQTT_HOST = '192.168.2.112'
 MQTT_TOPIC = 'erlt/monitor'
 MONITOR_URL = BASE_URL + '/api/v1/monitor/'
 HEADERS = {'User-Agent': 'vtx publisher'}
 
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-logger = logging.getLogger("vtx")
+logger = None
 
 
 args = None
@@ -70,7 +69,7 @@ def init_framebuffer():
     # http://www.karoltomala.com/blog/?p=679
     disp_no = os.getenv("DISPLAY")
     if disp_no:
-        print "I'm running under X display = {0}".format(disp_no)
+        logger.debug("I'm running under X display = %", disp_no)
 
     # Check which frame buffer drivers are available
     # Start with fbcon since directfb hangs with composite output
@@ -82,9 +81,10 @@ def init_framebuffer():
             os.putenv('SDL_VIDEODRIVER', driver)
         try:
             pygame.display.init()
-        except pygame.error:
-            print 'Driver: {0} failed.'.format(driver)
+        except pygame.error as e:
+            logger.error("Driver: %s failed: %s", driver, e)
             continue
+        logger.info("Driver found: %s", driver)
         found = True
         break
 
@@ -94,7 +94,7 @@ def init_framebuffer():
     size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
     global screen
     screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
-    logger.info("Framebuffer size: %d x %d", screen.get_width(), screen.get_height())
+    logger.info("FrameBuffer size: %d x %d", screen.get_width(), screen.get_height())
     # Clear the screen to start
     screen.fill((0, 0, 0))
     # Initialise font support
@@ -129,7 +129,7 @@ def draw_table(data):
     # pygame.draw.rect(screen, (255, 0, 0), (0, 0, screen.get_width(), screen.get_height()), 1)
 
     # Get a font and use it render some text on a Surface.
-    #font = pygame.font.Font(None, 70)
+    # font = pygame.font.Font(None, 70)
     # font2 = pygame.font.Font(None, 45)
 
     session = data.get("session")
@@ -143,7 +143,7 @@ def draw_table(data):
     num = min(len(data.get("data")), 11)+1
 
     h_space = max(round((((screen.get_height()-text.get_height())-num * font2.get_height())/num+2)), 0)
-    #space = 0
+    # space = 0
     logger.debug("h_space %s", h_space)
 
     idx = 0
@@ -248,19 +248,19 @@ def draw_udp():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((UPD_IP, 33333))
 
-    init_framebuffer()
-
     while True:
-        rawdata, addr = s.recvfrom(65535)
-        logger.debug("address %s", addr)
-        data = json.loads(rawdata)
+        raw_data, address = s.recvfrom(65535)
+        logger.debug("address %s", address)
+        data = json.loads(raw_data)
         draw_table(data)
+        process_window_event()
 
 
 def draw_polling():
     while True:
         data = get_monitor()
         draw_table(data)
+        process_window_event()
         time.sleep(1)
 
 
@@ -270,15 +270,30 @@ def draw_file():
 
     if args.window:
         while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit();
-                    exit()
+            process_window_event()
     else:
         time.sleep(100)
 
 
+def process_window_event():
+    if args.window:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+
+def init_logging(args):
+    level = getattr(logging, args.log.upper(), None)
+    if not isinstance(level, int):
+        raise ValueError('Invalid log level: %s' % args.log)
+    logging.basicConfig(level=level, stream=sys.stdout)
+    global logger
+    logger = logging.getLogger("vtx")
+
+
 def main():
+    init_logging(args)
     logger.debug(args)
     if not args:
         logger.error("no args")
@@ -302,6 +317,7 @@ if __name__ == "__main__":
     parser.add_argument('-u', '--udp', action='store_true')
     parser.add_argument('-f', '--file', type=argparse.FileType('r'))
     parser.add_argument('-w', '--window', action='store_true')
+    parser.add_argument('-l', '--log', choices=['critical', 'error', 'warning', 'info', 'debug'], default='info')
 
     args = parser.parse_args()
 
